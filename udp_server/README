@@ -1,0 +1,71 @@
+Jakub Wykocki, Informatyka Stosowana WFAIS UJ
+______________________________________________
+03/2023
+
+Programowanie sieciowe - serwer UDP/IPv4 obliczajacy wyrazenie matematyczne.
+
+------------------------------------------------------------------------------
+
+Opis: 
+
+Program serwera czeka na przychodzace wiadomosci od klientow, sprawdza czy sa 
+to wyrazenia poprawne (oczekuje dzialan matematycznych uzywajacych wylacznie 
+operatorow dodawania i odejmowania), jesli tak, akceptuje je i odsyla klientowi 
+wynik, jesli nie odsyla datagram o tresci ERROR. 
+W sprawdzaniu poprawnosci i obliczaniu wyrazen serwer uzywa dwoch funkcji:
+bool validateInput(char *input, size_t len) - funkcja sprawdza czy kazdy znak
+lancucha jest liczba lub znakiem dzialania, oraz czy maja one dobra kolejnosc
+int count(char *input, int len, int *err) - funkcja dzieli lancuch na konkretne 
+liczby, sprawdza czy nie przekraczaja one maksymalnej wartosci dla typu int16_t
+oraz oblicza wynik. Na koncu upewnia sie czy wynik rowniez zmiesci sie w zakresie.
+Jesli podczas dzialania funkcja napotka blad, wartosc err ustawiana jest na -1.
+
+-> nie akceptuje znakow '\n', '\r', nawet na koncu linii
+-> operuje na typie int16_t (zarowno wynik jak i czynnik dzialania nie moze
+go przekroczyc)
+
+
+------------------------------------------------------------------------------
+
+Zawartosc:
+
+udp_server.c - kod programu serwera
+udp_client.c - kod programu klienta
+udp_test.c - kod programu klienta-testera
+functions.c - plik z definicjami funkcji uzywanych w programach
+header.h - plik naglowkowy z deklaracjami funkcji
+results.txt - plik z odpowiedziami serwera
+test.txt - plik z przykladowymi zapytaniami do serwera
+expected_results.txt - plik z oczekiwanymi odpowiedziami od serwera
+Makefile - plik makefile
+
+------------------------------------------------------------------------------
+
+Obsluga:
+
+*** kompilacja i wywolanie: ***
+make udp_s  
+-  uruchamia program serwera na porcie 2020 (sztywno zapisany w Makefile
+jako argument wywolania programu)
+
+make udp_c  
+-  uruchamia program klienta na IP 127.0.0.1 oraz porcie 2020 
+(oba sztywno zapisane w Makefile jako argumenty wywolania programu)
+
+make udp_t
+- uruchamia program klienta-testera, ktory otwiera plik tekstowy test.txt
+pobiera z niego zapytania i wysyla do serwera, odbiera odpowiedz i zapisuje 
+w pliku results.txt. Pozniej wykonywana jest komenda wypisujaca dokladnie 
+zawartosc results.txt (z podzialem na bajty), aby mozna bylo dokladnie przesledzic
+czy zadne dodatkowe znaki nie zostaly odebrane. Na koniec komedna diff -s sprawdza
+czy pliki results.txt oraz expected_results.txt sa identyczne.
+Daje do mozliwosc w miare automatycznego przetestowania odpowiedzi odbieranych
+od serwera. Nie testuje on szczegolowo lacznosci pomiedzy serwerem a klientem.
+
+*** czyszczenie ***
+make clean
+
+*** kompresowanie ***
+make tar
+
+------------------------------------------------------------------------------
