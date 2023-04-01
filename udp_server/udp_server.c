@@ -121,7 +121,6 @@ int main(int argc, char *argv[])
 
 
         if(cnt!=message_size){
-            perror("cnt not equal message_size");
             fprintf( stderr, "%s", "cnt not equal message_size"); 
             return 1;
         }
