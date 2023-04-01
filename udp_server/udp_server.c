@@ -3,8 +3,6 @@ PROGRAM SERWER-SUMATOR UDP/IPV4
 wersja poprawiona
 */
 
-//przykladowa kompilacja
-//gcc -Wall -Wpedantic -std=c99 -O udp_server.c
 
 #include <stdio.h>
 #include <stdbool.h>
