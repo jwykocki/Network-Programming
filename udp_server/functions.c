@@ -30,6 +30,10 @@ bool validateInput(char *input, size_t len){ //funkcja sprawdza poprawnosc wprow
     size_t startIx = 0;
     size_t endIx = 1;
 
+    if(len==0){
+        return false;
+    }
+
     if(!isNumber(input[0]) || !isNumber(input[len-1])){ //jesli pierwszy i ostatni znak nie sa cyframi - false
         return false;
     }

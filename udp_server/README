@@ -6,6 +6,21 @@ Programowanie sieciowe - serwer UDP/IPv4 obliczajacy wyrazenie matematyczne.
 
 ------------------------------------------------------------------------------
 
+Wersja poprawiona
+
+- serwer nie oblicza juz dlugosci wiadomosci odebranej od klienta przez funkcje
+countBufLen(), sprawialo to problem, gdy klient celowo wyslal znak '\0'. Liczbe 
+odebranych bajtow serwer otrzymuje jako wynik funkcji recvfrom()
+
+- funkcja validateInput() na samym poczatku sprawdza czy dlugosc inputu nie jest rowna 
+0. Dobrze to sprawdzic, poniewaz pozniej funkcja chce dostac sie do elementu input[len-1]
+
+- poprawiono zglaszanie bledow. Funkcje jadra uzywaja perror(), pozostale bledy wypisywane
+sa na stderr poprzez fprintf()
+
+
+------------------------------------------------------------------------------
+
 Opis: 
 
 Program serwera czeka na przychodzace wiadomosci od klientow, sprawdza czy sa 
@@ -29,7 +44,7 @@ go przekroczyc)
 
 Zawartosc:
 
-udp_server.c - kod programu serwera
+udp_serv.c - kod programu serwera
 udp_client.c - kod programu klienta
 udp_test.c - kod programu klienta-testera
 functions.c - plik z definicjami funkcji uzywanych w programach
@@ -64,8 +79,10 @@ od serwera. Nie testuje on szczegolowo lacznosci pomiedzy serwerem a klientem.
 
 *** czyszczenie ***
 make clean
+- usuwa pliki obiektowe i wykonywalne
 
 *** kompresowanie ***
 make tar
+- kompresuje folder do .tar.gz
 
 ------------------------------------------------------------------------------
