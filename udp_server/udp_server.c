@@ -1,8 +1,33 @@
-/*PROGRAM KLIENTA UDP/IPV4*/
+/*
+PROGRAM SERWER-SUMATOR UDP/IPV4
+wersja poprawiona
+*/
 
-#define _POSIX_C_SOURCE 200809L
-#include "header.h"     //deklaracje funkcji uzywanych w programie
-//implementacje znajduja sie w pliku functions.c
+//przykladowa kompilacja
+//gcc -Wall -Wpedantic -std=c99 -O udp_server.c
+
+#include <stdio.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <signal.h>
+#include <string.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
+
+#define UDP_MAX 65535   //maksymalny rozmiar datagramu UDP
+#define MSG_SIZE  7    //rozmiar wiadomosci odsylanej do klienta: ERROR lub liczba int16_t - 7 znakow wystarczy
+
+//deklaracje funkcji
+int count(char *input, int len, int *err);
+bool validateInput(char *input, size_t len);
+bool isMark(char c);
+bool isNumber(char c);
+int countBufLen(char *ptr);
+bool printable_buf(const void * buf, int len);
 
 int lst_sock;   // gniazdko nasłuchujące
 
@@ -13,35 +38,18 @@ void INThandler() //obsluga sygnalu SIGINT
     if (rc == -1) {
         perror("close");
     }else{
-        printf(" lst_sock closed\n");
+        printf("lst_sock closed\n");
     }
     exit(0);
-    
 }
 
 int main(int argc, char *argv[])
 {
-    int rc;
-    ssize_t cnt;    // wyniki zwracane przez read() i write() są tego typu
+    int rc;             // "rc" to skrót słów "result code"
+    ssize_t cnt;        // wyniki zwracane przez read() i write() są tego typu
+    int port = 2020;    //numer portu
 
     signal(SIGINT, INThandler); //obsluga CTRL-C
-
-    if(argc!=2)
-    {
-        printf("Invalid number of arguments.\nargv[1] - UDP port number\n");
-        return 1;
-    }
-
-    //konwersja nr portu na int
-    int port;
-    char *end = argv[1];
-    port = strtol(argv[1], &end, 0);
-    if(port==0)
-    {
-        perror("strtol");
-        return 1;
-    }
-    printf("port: %i\n", port);
     
     //otwarcie socketa UDP serwera
     lst_sock = socket(AF_INET, SOCK_DGRAM, 0); 
@@ -66,11 +74,11 @@ int main(int argc, char *argv[])
     bool keep_on_handling_clients = true;
     while (keep_on_handling_clients) {
 
-        char buf[UDP_MAX];      //bufor na input klienta o rozmiarze maksymalnym datagramu UDP
-        int err = 0;            //zmienna informujaca o bledach konwersji otrzymanych danych
-        int16_t result;         //wynik powinien byc zapisany do int16_t
-        char msg[MSG_SIZE];     //wiadomosc odsylana do klienta 
-        memset(msg, '\0', MSG_SIZE); //wyczysc tablice
+        char buf[UDP_MAX];              //bufor na input klienta o rozmiarze maksymalnym datagramu UDP
+        int err = 0;                    //zmienna informujaca o bledach konwersji otrzymanych danych
+        int16_t result;                 //wynik powinien byc zapisany do int16_t
+        char msg[MSG_SIZE];             //wiadomosc odsylana do klienta 
+        memset(msg, '\0', MSG_SIZE);    //wyczysc tablice
         socklen_t len = sizeof(addr);
         int message_size;
 
@@ -81,7 +89,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        size_t length = countBufLen(buf); //obliczanie realnej dlugosci wiadomosci od klienta
+        size_t length = cnt; //funkcja recvfrom zwrcaca liczbe przeslanych bajtow
 
         //sprawdzenie poprawnosci daych oraz obliczenie wyniku
         if(validateInput(buf, length)){
@@ -95,7 +103,7 @@ int main(int argc, char *argv[])
         if(err==0){
             
             if(sprintf(msg, "%d", result)<0){
-                perror("sprintf error");
+                fprintf( stderr, "%s", "sprintf error");
                 return 1;
             } //zapisz wynik do msg
             message_size = countBufLen(msg);
@@ -108,13 +116,15 @@ int main(int argc, char *argv[])
 
         cnt = sendto(lst_sock, msg, message_size, 0, (const struct sockaddr *) &addr, len);
 
-        if(cnt!=message_size){
-            perror("cnt not equal message_size");
+         if(cnt==-1){
+            perror("sendto error");
             return 1;
         }
-        
-        if(cnt==-1){
-            perror("sendto error");
+
+
+        if(cnt!=message_size){
+            perror("cnt not equal message_size");
+            fprintf( stderr, "%s", "cnt not equal message_size"); 
             return 1;
         }
 
