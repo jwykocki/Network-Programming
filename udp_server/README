@@ -6,7 +6,7 @@ Programowanie sieciowe - serwer UDP/IPv4 obliczajacy wyrazenie matematyczne.
 
 ------------------------------------------------------------------------------
 
-Wersja poprawiona
+Wersja poprawiona - 01.04.2023
 
 - serwer nie oblicza juz dlugosci wiadomosci odebranej od klienta przez funkcje
 countBufLen(), sprawialo to problem, gdy klient celowo wyslal znak '\0'. Liczbe 
@@ -17,6 +17,8 @@ odebranych bajtow serwer otrzymuje jako wynik funkcji recvfrom()
 
 - poprawiono zglaszanie bledow. Funkcje jadra uzywaja perror(), pozostale bledy wypisywane
 sa na stderr poprzez fprintf()
+
+- korzystanie ze stalych INT16_MAX  i INT16_MIN z <stdint.h>
 
 
 ------------------------------------------------------------------------------

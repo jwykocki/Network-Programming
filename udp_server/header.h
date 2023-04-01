@@ -14,6 +14,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <stdint.h>
 
 #define UDP_MAX 65535   //maksymalny rozmiar datagramu UDP
 #define MSG_SIZE  7    //rozmiar wiadomosci odsylanej do klienta: ERROR lub liczba int16_t - 7 znakow wystarczy

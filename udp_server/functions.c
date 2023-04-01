@@ -121,12 +121,12 @@ int count(char *input, int len, int *err){
 
             int n = 0;
             if(!parseInt(snum, &n)){
-                perror("parseInt error");
+                fprintf(stderr, "%s", "parseInt error");
                 *err = -1;
                 return -1;
             }
 
-            if(n>__INT16_MAX__ || n<-__INT16_MAX__-1){
+            if(n>INT16_MAX || n<INT16_MIN){
                 *err = -1;
                 return -1;
             }
@@ -167,12 +167,12 @@ int count(char *input, int len, int *err){
 
         int n = 0;
         if(!parseInt(snum, &n)){
-            perror("parseInt error");
+            fprintf(stderr, "%s", "parseInt error");
             *err = -1;
             return -1;
         }
 
-        if(n>__INT16_MAX__ || n<-__INT16_MAX__-1){
+        if(n>INT16_MAX || n<INT16_MIN){
             *err = -1;
             return -1;
         }
@@ -194,7 +194,7 @@ int count(char *input, int len, int *err){
         marksIx++;
     }
 
-    if(result>__INT16_MAX__ || result<-__INT16_MAX__-1){
+    if(result>INT16_MAX || result<INT16_MIN){
         *err = -1;
         return -1;
     }
