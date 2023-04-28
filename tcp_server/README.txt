@@ -28,8 +28,15 @@ Specyfikacja:
 -> kazdy czynnik dzialania oraz wynik musi zmiescic sie w typie int16_t
 -> serwer domyslnie nasluchuje na porcie 2020 (zapisany w funkcji main())
 
-- serwer na ten moment nie zwalnia wszystkich bajtow alokowanych przez funkcje malloc()
-(memory leak)
+naprawiono:
+-> nie ma juz wyciekow pamieci, przy uruchamianiu programu pod valgrindem
+czasem wypisywane sa komunikaty o bledach, ale nie wplywaja one na poprawna
+prace serwera, przynajmniej przy testach ktore do tej pory wykonywalem
+-> dynamicznie alokowana tablica wskaznikow do struktur z danymi klientow
+moze byc juz rozszerzana i zmniejszana, w zaleznosci jakie jest aktualne
+zapelnienie numerow deskryptorow
+-> drobne zmiany kosmetyczne w niektorych programach, wiekoszsc funkcjonalnosci
+pozostala niezmieniona
 
 ------------------------------------------------------------------------------
 
@@ -75,6 +82,10 @@ wysylaniem wyrazen czeka randomowa ilosc sekund sleep(). Wyniki zapisuje do plik
 ?results.txt, w zaleznosci ktorym w kolei jest programem. Na koniec kazdy ze stworzonych wynikowych
 plikow tekstowych porownywany jest z plikiem expected_results.txt
 W pewien sposób symuluje prace serwera z wieloma klientami
+
+make valg
+- uruchamia program serwera pod valgrindem z wlaczona opcja wyszukiwania wyciekow
+pamieci. Przydatna komenda przy naprawianiu tego problemu
 
 opcjonalnie: laczyc sie z serwerem mozna poprzez narzedza ncat lub socat
 
