@@ -7,6 +7,8 @@ int main()
     signal(SIGINT, INThandler); //obsluga CTRL-C
     errno = 0;
 
+    
+
     if ((srv_sock = listening_socket_tcp_ipv4(srv_port)) == -1) {
         return 1;
     }

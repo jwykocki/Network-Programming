@@ -40,7 +40,7 @@ int main(int args, char *argv[])
         return 1;
     }
 
-    char msg[] = "12+3-7+34-79+50-42+1+0-35"; //dzialanie wysylane do serwera
+    char msg[] = "12+3\r\n0-5\r\n6+\r\n2+4\r\n123-"; //dzialanie wysylane do serwera
 
     size_t size = countBufLen(msg);
 

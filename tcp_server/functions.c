@@ -2,14 +2,20 @@
 //przykladowa kompilacja: gcc -Wall -pedantic -std=c99 tcp_server.c
 #include "header.h"
 
-// Pomocnicze funkcje do drukowania na ekranie komunikatów uzupełnianych
-// o znacznik czasu oraz identyfikatory procesu/wątku. Będą używane do
-// raportowania przebiegu pozostałych operacji we-wy.
+//struktura danych dla kazdego klienta, zawiera bufor oraz aktualna liczbe bajtow w nim
+typedef struct {
+    char * buf;
+    ssize_t bytes;
+}event_data;
 
-char **clients_buf;
+event_data *clients;
 
 /*deskryptor socketa serwera*/
 int srv_sock; 
+
+// Pomocnicze funkcje do drukowania na ekranie komunikatów uzupełnianych
+// o znacznik czasu oraz identyfikatory procesu/wątku. Będą używane do
+// raportowania przebiegu pozostałych operacji we-wy.
 
 void log_printf(const char *fmt, ...)
 {
@@ -162,7 +168,7 @@ bool isMark(char c){
     
 }
 
-int16_t count(char * data, size_t data_len, int *err)
+int16_t count(char * data, size_t data_len, int *err) //funkcja liczaca wyrazenie
 {
     
     char * p = data; //poczatek
@@ -248,9 +254,7 @@ int countBufLen(char *ptr)
 }
 
 int findEnd(char * data, size_t data_len){
-
     int ix = 0;
-
     while(ix<data_len){
         if(data[ix]=='\r' && data[ix+1]=='\n'){
             return ix;
@@ -260,23 +264,17 @@ int findEnd(char * data, size_t data_len){
     return -1;
 }
 
-ssize_t read_count_write(int sock, char** buf, ssize_t *curr_bytes)
+ssize_t read_count_write(int sock, char* buf, ssize_t *curr_bytes)
 {
-
     ssize_t current_bytes = *curr_bytes;
     
-    char *data = (char *) malloc(sizeof(char[MSG_SIZE]));
+    char msg[MSG_SIZE];
+    memset(msg, '\0', MSG_SIZE);
+    char goodmsg[10];
+    memset(goodmsg, '\0', 10);
+    char *data = (char *) malloc(MSG_SIZE);
     memset(data, '\0', MSG_SIZE);
     char *dataf = data;
-
-    char *goodmsg = (char *)malloc(sizeof(char[10]));
-    memset(goodmsg, '\0', 10);
-    char *goodmsgf = goodmsg;
-
-    char *msg = (char *) malloc(sizeof(char[MSG_SIZE])); 
-    memset(msg, '\0', MSG_SIZE);
-    char *msgf = msg;
-
     char error[] = "ERROR\r\n";
 
     int16_t result = INT16_MIN; //to ignore unavailable warning
@@ -285,101 +283,84 @@ ssize_t read_count_write(int sock, char** buf, ssize_t *curr_bytes)
     ssize_t bytes_read;
 
         bytes_read = read_verbose(sock, msg, sizeof(msg));
-
         if(bytes_read < 0) {
             return -1;
         }
-
-        if(bytes_read==0){ //klient nie bedzie juz wysylal danych
-            
+ 
+        if(bytes_read==0){ //klient nie bedzie juz wysylal danych      
             if(current_bytes>0){
                 strcat(data, error);
                 data_len += countBufLen(error);
                 while (data_len > 0) {
-
                     ssize_t bytes_written = write_verbose(sock, data, data_len);
-                    
                     if (bytes_written < 0) {
                         return -1;
                     }
                     data = data + bytes_written;
                     data_len = data_len - bytes_written;
                 }
-                (*buf)+=current_bytes;
+                (buf)+=current_bytes;
                 free(dataf);
-                free(msgf);
-                free(goodmsgf);
-            return bytes_read;
+                return bytes_read;
             }
         }
 
         //sprawdza bardzo pesymistyczna sytuacje, gdy musielibysmy wszystkie
         //przeczytane bajty zapisac do bufora, a nie bedzie tam juz miejsca
-        if(countBufLen(*buf) + bytes_read >= MSG_SIZE){
+        if(countBufLen(buf) + bytes_read >= MSG_SIZE){
             log_printf("message size over MSG_SIZE");
             return -1;
         } 
-        strcat(*buf, msg);
-
+        strcat(buf, msg);
         current_bytes += bytes_read;
-
-        int end;
+        int end; //\r\n
 
         do{
             err = 0;
-            end = findEnd(*buf, current_bytes);
+            end = findEnd(buf, current_bytes);
 
             if(end!=-1){
 
-                result = count(*buf, end, &err); 
-                (*buf)+=(end+2);
+                result = count(buf, end, &err);
+                const char *coursor = buf; //to move pointer of \r\n
+                coursor += (end + 2);
+                strcpy(buf, coursor);
                 current_bytes-=(end+2);
 
                 if(err == 0){ 
-                    if(sprintf(goodmsg, "%d\r\n", result)<0){ //dwuznak \r\n jest dopisywany do wiadomosci zwrotnej
-                        
+                    if(sprintf(goodmsg, "%d\r\n", result)<0){ //dwuznak \r\n jest dopisywany do wiadomosci zwrotnej   
                         log_printf("sprintf error"); 
                         return -1;
                     } //zapisz wynik do msg
                     strcat(data, goodmsg);
                     data_len += countBufLen(goodmsg);
-                    
-
-                }else{ //wiadomosc byla niepoprawna
-                    
+                }else{ //wiadomosc byla niepoprawna            
                     strcat(data, error);
                     data_len += countBufLen(error);
                 }
 
                 while (data_len > 0) {
-    
                     ssize_t bytes_written = write_verbose(sock, data, data_len);
-
                     if (bytes_written < 0) {
                         return -1;
                     }
                     data = data + bytes_written;
                     data_len = data_len - bytes_written;
-                    
                 }
             }
-
         }while(end!=-1);
 
     *curr_bytes = current_bytes;
-
-    //zwalnianie pamieci
-    free(dataf);
-    free(msgf);
-    free(goodmsgf);
-
+    free(dataf); //zwalnianie pamieci
     return bytes_read;
 }
 
 
 void epoll_loop(int srv_sock)
 {
-    // w dzisiejszych czasach wartość argumentu nie ma znaczenia
+    int clients_max = CLIENTS_MAX;
+    clients = malloc(clients_max * sizeof(event_data));
+
     int epoll_fd = epoll_create(10);
     if (epoll_fd == -1) {
         log_perror("epoll_create");
@@ -391,14 +372,10 @@ void epoll_loop(int srv_sock)
         goto cleanup_epoll;
     }
 
-    clients_buf = (char **) malloc(MAX_EVENTS * sizeof(char *));
-    ssize_t clients_bytes[MAX_EVENTS];
-
     while (true) {
 
         log_printf("calling epoll()");
         struct epoll_event events[MAX_EVENTS];
-
         // timeout równy -1 oznacza czekanie w nieskończoność
         int num = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
         if (num == -1) {
@@ -409,7 +386,6 @@ void epoll_loop(int srv_sock)
         log_printf("number of events = %i", num);
 
         for (int i = 0; i < num; ++i) {
-            // deskryptor został wcześniej zapisany jako dodatkowe dane
             int fd = events[i].data.fd;
             // typ zgłoszonego zdarzenia powinien zawierać "gotów do odczytu"
             if ((events[i].events & EPOLLIN) == 0) {
@@ -417,32 +393,37 @@ void epoll_loop(int srv_sock)
                 log_printf("descriptor %i isn't ready to read", fd);
                 continue;
             }
-
-            if (fd == srv_sock) { //dopytac
+            if (fd == srv_sock) { 
                 int s = accept_verbose(srv_sock);
+                // s - deskryptor klienta !
                 if (s == -1) {
                     goto cleanup_epoll;
                 }
                 if (add_fd_to_epoll(s, epoll_fd) == -1) {
                     goto cleanup_epoll;
-                }else{
-                
-                clients_buf[s] = (char *) malloc(sizeof(char[MSG_SIZE]));
-                clients_bytes[s] = 0;
-                memset(clients_buf[s], '\0', MSG_SIZE);
+                }else{ //przyszedl nowy klient, nie bylo erroru
+    
+                    char *buf = malloc(MSG_SIZE);
+                    event_data ed = {buf, 0};         
+                    if(s>clients_max-6){ //deskryptory kleintow zaczynaja sie od 5 indeksu
+                        clients_max*=2;
+                        clients = realloc(clients, clients_max * sizeof(event_data));
+                        log_printf("clients_max size resized to %i", clients_max);
+                    }
+                    else if(s<clients_max/2){ //deskryptory kleintow zaczynaja sie od 5 indeksu
+                        clients_max/=2;
+                        clients = realloc(clients, clients_max * sizeof(event_data));
+                        log_printf("clients_max size resized to %i", clients_max);
+                    }
 
+                    clients[s] = ed;
                 }
-
             } else {    // fd != srv_sock
-   
-                if (read_count_write(fd, &clients_buf[fd], &clients_bytes[fd]) <= 0) {
+                //fd = deskryptor klienta
+                if (read_count_write(fd, clients[fd].buf, &clients[fd].bytes) <= 0) {
                     // druga strona zamknęła połączenie lub wystąpił błąd
-                    
                     remove_fd_from_epoll(fd, epoll_fd);
-                   
-                    //tu powinno nastapic cos w rodzaju free(clients_buf[fd])
-                    //ale powodowalo segmentation fault
-                
+                    free(clients[fd].buf);
                     close_verbose(fd);
                 }
             }
@@ -456,8 +437,6 @@ cleanup_epoll:
     // W tym miejscu należałoby zamknąć otwarte połączenia z klientami, ale
     // nie dysponujemy żadną listą ani zbiorem z numerami ich deskryptorów.
 }
-
-
 // Standardowa procedura tworząca nasłuchujące gniazdko TCP.
 
 int listening_socket_tcp_ipv4(in_port_t port)
@@ -496,7 +475,7 @@ close_and_fail:
 
 void INThandler() //obsluga sygnalu SIGINT
 {
-    free(clients_buf);
+    free(clients);
     log_printf("INThandler");
     log_printf("main loop done");
     int rc = close(srv_sock);

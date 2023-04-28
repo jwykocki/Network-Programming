@@ -25,7 +25,9 @@ int main(int args, char *argv[])
     char default_file_name[] = "results.txt";
 
     if(args>1){
-        memcpy(file_name, argv[1], countBufLen(argv[1]));
+        //memcpy(file_name, argv[1], countBufLen(argv[1]));
+        strcpy(file_name, argv[1]);
+
     }
     else{
         memcpy(file_name, default_file_name, countBufLen(default_file_name));
@@ -33,7 +35,6 @@ int main(int args, char *argv[])
 
 
     FILE *inputfile = fopen("test.txt", "r");
-    
     remove_file(file_name);
 
     int outfd  = open(file_name, O_WRONLY | O_CREAT, 0644);
@@ -116,15 +117,12 @@ int main(int args, char *argv[])
         }
 
         int len = cnt;
-
+        w = write(outfd, buf, len); 
         
-
-            w = write(outfd, buf, len); 
-          
-            if(w == -1){
-            perror("write");
-            return 1;
-            }
+        if(w == -1){
+        perror("write");
+        return 1;
+        }
         
     }
 

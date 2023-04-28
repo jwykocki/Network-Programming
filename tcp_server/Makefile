@@ -66,6 +66,10 @@ tcp_t: $(EXEC5)
 .PHONY: tests
 tests: $(EXEC6) $(EXEC5)
 	./$(EXEC6) $(n)
+
+.PHONY: valg
+valg: $(EXEC1)
+	valgrind --leak-check=full --show-leak-kinds=all ./$(EXEC1)
 	
 .PHONY: clean
 EXECS = $(EXEC1) $(EXEC2) $(EXEC3) $(EXEC4) $(EXEC5) $(EXEC6)

@@ -25,7 +25,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-
 // Te dwa pliki nagłówkowe są specyficzne dla Linuksa z biblioteką glibc:
 #include <sys/epoll.h>
 #include <sys/syscall.h>
@@ -33,10 +32,7 @@
 #define MAX_EVENTS 100
 #define MSG_SIZE 4096
 #define READ_SIZE 100
-
-//extern aby uniknac multiple definition
-
-extern char **clients_buf;  //tablica wskaznikow do buforow klientow
+#define CLIENTS_MAX 20
 
 /*deskryptor socketa serwera*/
 extern int srv_sock; 
@@ -56,7 +52,7 @@ bool isMark(char c);
 int16_t count(char * data, size_t data_len, int *err);
 int countBufLen(char *ptr);
 int findEnd(char * data, size_t data_len);
-ssize_t read_count_write(int sock, char** buf, ssize_t *curr_bytes);
+ssize_t read_count_write(int sock, char* buf, ssize_t *curr_bytes);
 void epoll_loop(int srv_sock);
 int listening_socket_tcp_ipv4(in_port_t port);
 void INThandler();
