@@ -1,3 +1,11 @@
+/*
+* Program laczacy sie ze strona https://www.accuweather.com, pobierajacy dane dotyczace aktualnego
+* poziomu powietrza i wypisujacy je na standardowe wyjscie
+* Porgram moze przyjac trzy argumenty: nazwe miasta, nazwe miasta w linku, id miasta w linku
+* przykladowo dla miasta Warszawy: "Warszawa", "warsaw", "274663"
+* W przypadku braku argumentow program wyszuka informacje dla miasta Krakow.
+* */
+
 package org.example;
 
 import org.jsoup.Connection;
@@ -5,54 +13,34 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
 import java.io.IOException;
+import java.util.Arrays;
+
 
 public class WebScrapper {
 
-    //colors
+    //nice colors
     public static final String ANSI_RED = "\u001B[31m";
     public static final String ANSI_GREEN = "\u001B[32m";
     public static final String ANSI_RESET = "\u001B[0m";
 
-    //TODO: lepiej robic z JSONem
-    public static void main(String[] args) {
-
-        int webCode = 200;
-        City city;
-
-        if(args.length==3){
-            city = new City(args[0], args[1], args[2]);
-        }else {
-            city = new City("Kraków", "krakow", "274455");
-        }
-
-        String url, webType, webContent;
-
-        url = "https://www.accuweather.com/pl/pl/" + city.getURLname() +"/"
-                + city.getId() + "/air-quality-index/" +  city.getId();
-        webType = "text/html";
-        webContent = "AKTUALNA";
-
+    private static Connection connectToWebsite(String url, String webType, String webContent) {
 
         Document doc = null;
-        System.out.println("Connecting to " + url);
-        Connection connect = Jsoup.connect(url);
-
-        try{
-            doc = connect.get();
-        }
-        catch(IOException e ){
+        Connection connection = Jsoup.connect(url);
+        try {
+            doc = connection.get();
+        } catch (IOException e) {
             e.printStackTrace();
-            System.exit(1); //failure status
+            System.exit(2); //failure status
         }
+        Connection.Response response = connection.response();
 
-        Connection.Response response = connect.response();
-
-        //get the code
-        int responseCode = response.statusCode();
-
-        //get type
+        //check the code
+        if(response.statusCode() != 200) {
+            System.exit(3);
+        }
+        //check type
         String responseType = response.contentType();
         // sometimes returning value of .contentType() is text/html; charset=utf-8
         int ix;
@@ -60,32 +48,36 @@ public class WebScrapper {
         if((ix = responseType.indexOf(';')) != -1){
             responseType = responseType.substring(0, ix);
         }
+        if(!webType.equals(responseType)) {
+            System.exit(4);
+        }
 
         //check if concrete content on the website exist
         Elements docElementsContainingText = doc.getElementsContainingText(webContent);
+        if(docElementsContainingText.isEmpty()) {
+            System.exit(5);
+        }
+        return connection;
+    }
 
-        System.out.print("webCode: ");
-        if(responseCode == webCode){
-            System.out.println(ANSI_GREEN + "\t\t[OK]" + ANSI_RESET);
-        }else {
-            System.out.println(ANSI_RED + "\t\t[NOT OK]" + ANSI_RESET);
-            System.exit(2);
+    private static boolean isCorrectAirQualityNumber(String nums) {
+        int aqNumber;
+        try {
+            aqNumber = Integer.parseInt(nums);
+        } catch (NumberFormatException e) {
+            return false;
         }
 
-        System.out.print("webType: ");
-        if(webType.equals(responseType)){
-            System.out.println(ANSI_GREEN + "\t\t[OK]" + ANSI_RESET);
-        }else {
-            System.out.println(ANSI_RED + "\t\t[NOT OK]" + ANSI_RESET);
-            System.exit(3);
-        }
+        return aqNumber >= 0 && aqNumber <= 500; //biggest expected value is more than 301
+    }
 
-        System.out.print("webContent: ");
-        if(!docElementsContainingText.isEmpty()){
-            System.out.println(ANSI_GREEN + "\t[OK]" + ANSI_RESET);
-        }else {
-            System.out.println(ANSI_RED + "\t[NOT OK]" + ANSI_RESET);
-            System.exit(4);
+    private static int getAirQualityNumber(Connection connection){
+        Document doc = null;
+        try {
+            doc = connection.get();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(2); //failure status
         }
 
         Element airQualityContent = doc.select("div.air-quality-content").first();
@@ -93,17 +85,48 @@ public class WebScrapper {
             System.exit(5);
         }
 
-        //TODO: sprawdz czy te wartosci maja sens
+        String nums = null;
+
         if(airQualityContent.select("p.day-of-week").text().equals("Dzisiaj")){
-            int AqNumber = Integer.parseInt(airQualityContent.select("div.aq-number").text());
+             nums = airQualityContent.select("div.aq-number").text();
+
+            //sprawdz czy pobrane wartosci to wartosc zanieczyszczenia i jednostka
+            if(!isCorrectAirQualityNumber(nums)){
+                System.exit(7);
+            }
             String Aqunit = airQualityContent.select("div.aq-unit").text();
-            System.out.println("Aktualne zanieczyszczenie w mieście " + city.getName()
-                    + ": " + AqNumber + " " + Aqunit + ".");
+            if(!Aqunit.equals("AQI")){
+                System.exit(8);
+            }
         }else {
             System.exit(6);
         }
+        return Integer.parseInt(nums);
+    }
+
+    public static void main(String[] args) {
+
+        City city;
+
+        if (args.length == 3) {
+            city = new City(args[0], args[1], args[2]);
+        } else {
+            city = new City("Kraków", "krakow", "274455");
+        }
+
+        String url, webType, webContent;
+        url = "https://www.accuweather.com/pl/pl/" + city.getURLname() + "/"
+                + city.getId() + "/air-quality-index/" + city.getId();
+        webType = "text/html";
+        webContent = "AKTUALNA"; //powinno znajdować sie na stronie
+
+        System.out.print("Connecting to " + url + ": ");
+        Connection connection = connectToWebsite(url, webType, webContent);
+        System.out.println(ANSI_GREEN + "OK" + ANSI_RESET);
+        int aqNumber = getAirQualityNumber(connection);
+        System.out.println("Aktualne zanieczyszczenie w mieście " + city.getName()
+                + ": " + aqNumber + " AQI.");
 
         System.exit(0); //success status
-
     }
 }
