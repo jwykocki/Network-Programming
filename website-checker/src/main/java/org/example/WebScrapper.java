@@ -8,13 +8,24 @@
 
 package org.example;
 
+import netscape.javascript.JSObject;
+//import org.json.JSONObject;
+import org.json.*;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
+import java.util.Iterator;
 
 
 public class WebScrapper {
@@ -104,7 +115,19 @@ public class WebScrapper {
         return Integer.parseInt(nums);
     }
 
-    public static void main(String[] args) {
+    private static void printWebsite(Connection connection){
+        Document doc = null;
+        try {
+            doc = connection.get();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(2); //failure status
+        }
+
+        System.out.println(doc);
+    }
+
+    public static void main(String[] args) throws IOException {
 
         City city;
 
@@ -120,13 +143,21 @@ public class WebScrapper {
         webType = "text/html";
         webContent = "AKTUALNA"; //powinno znajdować sie na stronie
 
-        System.out.print("Connecting to " + url + ": ");
-        Connection connection = connectToWebsite(url, webType, webContent);
-        System.out.println(ANSI_GREEN + "OK" + ANSI_RESET);
-        int aqNumber = getAirQualityNumber(connection);
-        System.out.println("Aktualne zanieczyszczenie w mieście " + city.getName()
-                + ": " + aqNumber + " AQI.");
+        String url2 = "https://www.ryanair.com/pl/pl/tanie-loty/?from=KRK&out-from-date=2023-05-11&out-to-date=2024-05-11&budget=150";
+
+        String webContent2 = "Olsztyn";
+
+        System.out.print("Connecting to " + url2 + ": ");
+        Connection connection = connectToWebsite(url2, webType, webContent2);
+//        System.out.println(ANSI_GREEN + "OK" + ANSI_RESET);
+//        int aqNumber = getAirQualityNumber(connection);
+//        System.out.println("Aktualne zanieczyszczenie w mieście " + city.getName()
+//                + ": " + aqNumber + " AQI.");
+
+        printWebsite(connection);
+
 
         System.exit(0); //success status
+
     }
 }
