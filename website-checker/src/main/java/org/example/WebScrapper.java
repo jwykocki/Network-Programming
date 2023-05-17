@@ -5,27 +5,15 @@
 * przykladowo dla miasta Warszawy: "Warszawa", "warsaw", "274663"
 * W przypadku braku argumentow program wyszuka informacje dla miasta Krakow.
 * */
-
 package org.example;
 
-import netscape.javascript.JSObject;
-//import org.json.JSONObject;
-import org.json.*;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.web.reactive.function.client.WebClient;
-
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Arrays;
-import java.util.Iterator;
 
 
 public class WebScrapper {
@@ -88,76 +76,62 @@ public class WebScrapper {
             doc = connection.get();
         } catch (IOException e) {
             e.printStackTrace();
-            System.exit(2); //failure status
+            System.exit(6); //failure status
         }
 
         Element airQualityContent = doc.select("div.air-quality-content").first();
         if(airQualityContent == null){
-            System.exit(5);
+            System.exit(7);
         }
 
         String nums = null;
 
-        if(airQualityContent.select("p.day-of-week").text().equals("Dzisiaj")){
-             nums = airQualityContent.select("div.aq-number").text();
-
-            //sprawdz czy pobrane wartosci to wartosc zanieczyszczenia i jednostka
-            if(!isCorrectAirQualityNumber(nums)){
-                System.exit(7);
-            }
-            String Aqunit = airQualityContent.select("div.aq-unit").text();
-            if(!Aqunit.equals("AQI")){
-                System.exit(8);
-            }
-        }else {
-            System.exit(6);
+        if(!airQualityContent.select("p.day-of-week").text().equals("Dzisiaj")){
+            System.exit(8);
         }
+
+         nums = airQualityContent.select("div.aq-number").text();
+
+        //sprawdz czy pobrane wartosci to wartosc zanieczyszczenia i jednostka
+        if(!isCorrectAirQualityNumber(nums)){
+            System.exit(9);
+        }
+        String Aqunit = airQualityContent.select("div.aq-unit").text();
+        if(!Aqunit.equals("AQI")){
+            System.exit(10);
+        }
+
         return Integer.parseInt(nums);
     }
 
-    private static void printWebsite(Connection connection){
-        Document doc = null;
-        try {
-            doc = connection.get();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(2); //failure status
-        }
+    public static void main(String[] args) {
 
-        System.out.println(doc);
-    }
-
-    public static void main(String[] args) throws IOException {
-
-        City city;
+        String[] cityData;
 
         if (args.length == 3) {
-            city = new City(args[0], args[1], args[2]);
+            cityData = Arrays.copyOf(args, 3);
         } else {
-            city = new City("Kraków", "krakow", "274455");
+
+            cityData = new String[]{"Kraków", "krakow", "274455"};
+            //cityData = new String[]{"Warszawa", "warsaw", "274663"};
         }
 
         String url, webType, webContent;
-        url = "https://www.accuweather.com/pl/pl/" + city.getURLname() + "/"
-                + city.getId() + "/air-quality-index/" + city.getId();
+        url = "https://www.accuweather.com/pl/pl/" + cityData[1] + "/"
+                + cityData[2] + "/air-quality-index/" + cityData[2];
         webType = "text/html";
         webContent = "AKTUALNA"; //powinno znajdować sie na stronie
 
-        String url2 = "https://www.ryanair.com/pl/pl/tanie-loty/?from=KRK&out-from-date=2023-05-11&out-to-date=2024-05-11&budget=150";
+        System.err.print("Connecting to " + url + ": ");
+        Connection connection = connectToWebsite(url, webType, webContent);
+        System.err.println(ANSI_GREEN + "OK" + ANSI_RESET);
+        int aqNumber = getAirQualityNumber(connection);
+        System.err.println("Aktualne zanieczyszczenie w mieście " + cityData[0]
+                + ": " + aqNumber + " AQI.");
 
-        String webContent2 = "Olsztyn";
-
-        System.out.print("Connecting to " + url2 + ": ");
-        Connection connection = connectToWebsite(url2, webType, webContent2);
-//        System.out.println(ANSI_GREEN + "OK" + ANSI_RESET);
-//        int aqNumber = getAirQualityNumber(connection);
-//        System.out.println("Aktualne zanieczyszczenie w mieście " + city.getName()
-//                + ": " + aqNumber + " AQI.");
-
-        printWebsite(connection);
-
+        //wypisz na standatdowe wyjscie tylko sama wartosc zanieczyszczenia
+        System.out.println(aqNumber);
 
         System.exit(0); //success status
-
     }
 }

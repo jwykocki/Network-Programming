@@ -1,72 +1,121 @@
 package org.example;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 public class DiscogsReader {
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
+            .build();
 
-    private static JSONObject getJSONFromWebsite(String url){
-        URL obj = null;
-        StringBuilder jsonStringBuilder;
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_RESET = "\u001B[0m";
+
+    private static JSONObject parseJSON(String response){
+
+        JSONObject jobj = null;
         try {
-            URI uri = new URI(url);
-            obj = uri.toURL();
-        } catch (MalformedURLException e) {
+            jobj = new JSONObject(response);
+        }catch(JSONException e){
             e.printStackTrace();
-            System.exit(2);
-
-        } catch (java.net.URISyntaxException e) {
-            e.printStackTrace();
-            System.exit(7);
+            System.exit(4);
         }
-
-        try (InputStream input = obj.openStream()) {
-            InputStreamReader isr = new InputStreamReader(input);
-            BufferedReader reader = new BufferedReader(isr);
-            jsonStringBuilder = new StringBuilder();
-            int c;
-            while ((c = reader.read()) != -1) {
-                jsonStringBuilder.append((char) c);
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        String jsonWholeString = jsonStringBuilder.toString();
-        return  new JSONObject(jsonWholeString.substring(jsonWholeString.indexOf('{'), jsonWholeString.length()-1));
+        return jobj;
     }
 
-    private static boolean checkConnection(JSONObject json){
-        //check status code
-        JSONObject meta = (JSONObject) json.get("meta");
+    private static JSONArray getReleases(JSONObject artist){
 
-        int statusCode = (int) meta.get("status");
-        if(statusCode!=200) System.exit(10);
+        JSONObject data;
+        JSONArray releases = null;
 
-        return true;
+        try{
+            data = (JSONObject) artist.get("data");
+            releases = data.getJSONArray("releases");
+        }catch(JSONException e){
+            e.printStackTrace();
+            System.exit(11);
+        }
+
+        if(releases == null){
+            System.exit(12);
+        }
+
+        return releases;
     }
 
-    public static void main(String[] args) {
+
+    private static String sendGet(String url) {
+        HttpResponse<String> response = null;
+        HttpRequest request = HttpRequest.newBuilder()
+                .GET()
+                .uri(URI.create(url))
+                .setHeader("User-Agent", "Java 11 HttpClient Bot")
+                .build();
+
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        }catch(java.io.IOException | java.lang.InterruptedException e){
+            e.printStackTrace();
+            System.exit(14);
+        }
+
+        if(response.statusCode()!=200){
+            System.err.println("Status code: " + response.statusCode());
+            System.exit(15);
+        }
+
+        String resp = response.body();
+        try {
+            resp = resp.substring(resp.indexOf('{')); //usun callbackname na poczatku
+        }catch(IndexOutOfBoundsException e){
+            e.printStackTrace();
+            System.exit(16);
+        }
+
+        return resp;
+    }
+
+    private static String getArtistName(JSONObject json){
+        JSONArray releases = getReleases(json);
+        String name = null;
+        for(int i=0; i<releases.length(); i++){
+            JSONObject release = (JSONObject) releases.get(i);
+             if(release.get("role").equals("Main")) { //szukamy solowych albumow
+                name = release.get("artist").toString();
+             }
+        }
+
+        if(name == null){
+            System.err.println("Artist name not found");
+            System.exit(20);
+        }
+        return name;
+    }
+
+
+    public static void main(String[] args) throws Exception {
 
         String url = "https://api.discogs.com/artists/4320863/releases?callback=callbackname";
-        JSONObject json = getJSONFromWebsite(url);
+        System.err.print("Connecting to " + url + ": ");
 
-        JSONObject data = (JSONObject) json.get("data");
-        JSONArray releases = data.getJSONArray("releases");
+        String response = sendGet(url);
+        System.err.println(ANSI_GREEN + "OK" + ANSI_RESET);
 
-        for(int i=0; i< releases.length(); i++){
+        JSONObject json = parseJSON(response);
+        JSONArray releases = getReleases(json);
+        System.out.println(getArtistName(json));
+
+        //wyswietl albumy na stdout
+        for(int i=0; i<releases.length(); i++){
             JSONObject release = (JSONObject) releases.get(i);
-            if(release.get("role").equals("Main")) { //szukamy solowych albumow
+           if(release.get("role").equals("Main")) { //szukamy solowych albumow
                 System.out.println(release.get("title"));
-            }
+           }
         }
     }
 }
