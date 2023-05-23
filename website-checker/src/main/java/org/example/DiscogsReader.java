@@ -1,20 +1,22 @@
 package org.example;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.*;
 
+//TODO: opakować metodą wyciaganie danych z JSONa
+//TODO: zrobic wyszukiwanie zespolu nazwa
 public class DiscogsReader {
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_2)
             .build();
-
-    public static final String ANSI_GREEN = "\u001B[32m";
-    public static final String ANSI_RESET = "\u001B[0m";
 
     private static JSONObject parseJSON(String response){
 
@@ -26,26 +28,6 @@ public class DiscogsReader {
             System.exit(4);
         }
         return jobj;
-    }
-
-    private static JSONArray getReleases(JSONObject artist){
-
-        JSONObject data;
-        JSONArray releases = null;
-
-        try{
-            data = (JSONObject) artist.get("data");
-            releases = data.getJSONArray("releases");
-        }catch(JSONException e){
-            e.printStackTrace();
-            System.exit(11);
-        }
-
-        if(releases == null){
-            System.exit(12);
-        }
-
-        return releases;
     }
 
 
@@ -80,42 +62,135 @@ public class DiscogsReader {
         return resp;
     }
 
-    private static String getArtistName(JSONObject json){
-        JSONArray releases = getReleases(json);
-        String name = null;
-        for(int i=0; i<releases.length(); i++){
-            JSONObject release = (JSONObject) releases.get(i);
-             if(release.get("role").equals("Main")) { //szukamy solowych albumow
-                name = release.get("artist").toString();
-             }
+    private static class Group{
+        private final String name;
+        private final ArrayList<String> members;
+
+        public Group(String name) {
+            this.name = name;
+            members = new ArrayList<>();
         }
 
-        if(name == null){
-            System.err.println("Artist name not found");
-            System.exit(20);
+        public String getName() {
+            return name;
         }
-        return name;
+
+        public ArrayList<String> getMembers() {
+            return members;
+        }
+
+        public void addMember(String artist){
+            if(!members.contains(artist)){
+                members.add(artist);
+            }
+        }
+    }
+
+    private static JSONArray getItemsFromData(JSONObject object, String key){
+        JSONObject data;
+        JSONArray items = null;
+
+        try{
+            data = (JSONObject) object.get("data");
+            items = data.getJSONArray(key);
+        }catch(JSONException e){
+            e.printStackTrace();
+            System.exit(11);
+        }
+
+        if(items == null){
+            System.exit(12);
+        }
+        return items;
+    }
+
+    private static void saveListToFile(String filename, List<JSONObject> list) {
+        File outFile = null;
+        FileWriter writer = null;
+        try {
+            outFile = new File(filename);
+            if (outFile.createNewFile()) {
+                System.err.println("Output file created: " + outFile.getName());
+            } else {
+                System.err.println("Output file already exists.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(30);
+        }
+        try {
+            writer = new FileWriter(outFile);
+            for (JSONObject obj : list) {
+                writer.write(obj.toString());
+                writer.write("\r\n");
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(31);
+        }
     }
 
 
-    public static void main(String[] args) throws Exception {
+    private static final String discogsUrl = "https://api.discogs.com/artists//";
 
-        String url = "https://api.discogs.com/artists/4320863/releases?callback=callbackname";
-        System.err.print("Connecting to " + url + ": ");
+    public static void main(String[] args){
 
-        String response = sendGet(url);
-        System.err.println(ANSI_GREEN + "OK" + ANSI_RESET);
+        int id = 18839;
+        String callback = "?callback=callbackname";
+        String url = discogsUrl + id + callback;
 
-        JSONObject json = parseJSON(response);
-        JSONArray releases = getReleases(json);
-        System.out.println(getArtistName(json));
+        String mainResponse = sendGet(url);
+        JSONObject mainGroup = parseJSON(mainResponse);
+        String mainGroupName = ((JSONObject)mainGroup.get("data")).get("name").toString();
+        System.err.println("Członkowie " + mainGroupName + " to: ");
 
-        //wyswietl albumy na stdout
-        for(int i=0; i<releases.length(); i++){
-            JSONObject release = (JSONObject) releases.get(i);
-           if(release.get("role").equals("Main")) { //szukamy solowych albumow
-                System.out.println(release.get("title"));
-           }
+        List<Group> groupsList = new ArrayList<>();
+        JSONArray mainMembers = getItemsFromData(mainGroup, "members");
+        for(int i=0; i<mainMembers.length(); i++){ //wszyscy czlonkowie zespolu
+           JSONObject member = (JSONObject) mainMembers.get(i);
+            System.err.println(member.get("name"));
+            String memberId = member.get("id").toString();
+            String memberResponse = sendGet(discogsUrl + memberId + callback);
+            JSONObject memberJson = parseJSON(memberResponse);
+            JSONArray groups = getItemsFromData(memberJson, "groups");  //grupy w ktorych gral konkretny czlonek
+            for(int j=0; j<groups.length(); j++){
+                JSONObject group = (JSONObject) groups.get(j);
+                String groupName = group.get("name").toString();
+                boolean found = false;
+
+                for (Group value : groupsList) {
+                    if (value.name.equals(groupName)) {
+                        found = true;
+                        value.addMember(member.get("name").toString()); //jesli juz taki jest to add zostanie zignorowane
+                        break;
+                    }
+                }
+
+                if(!found && !group.get("name").toString().equals(mainGroupName)) { //jesli takiej grupy nie bylo na liscie to dodaj ja i dodaj membera do tego zoespolu
+                    groupsList.add(new Group(group.get("name").toString()));
+                    groupsList.get(groupsList.size()-1).addMember(member.get("name").toString());
+                }
+            }
         }
+
+        System.err.println("-------------------------------------------");
+        ArrayList<JSONObject> groupsOut = new ArrayList<>();
+        for(Group g : groupsList){
+            if(g.getMembers().size()<2) {
+                continue;
+            }
+            JSONObject groupOut = new JSONObject();
+            JSONArray membersOut = new JSONArray();
+            for(String name: g.getMembers()){
+                membersOut.put(name);
+            }
+            groupOut.put("members", membersOut);
+            groupOut.put("name", g.getName());
+            System.out.println(groupOut);
+            groupsOut.add(groupOut);
+        }
+        saveListToFile("list.txt", groupsOut);
+        System.exit(0);
     }
 }
