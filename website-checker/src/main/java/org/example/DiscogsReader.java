@@ -110,14 +110,15 @@ public class DiscogsReader {
         try {
             outFile = new File(filename);
             if (outFile.createNewFile()) {
-                System.err.println("Output file created: " + outFile.getName());
+                System.err.println("Output file " + outFile.getName() + " created." );
             } else {
-                System.err.println("Output file already exists.");
+                System.err.println("Output file " + outFile.getName() + " already exists.");
             }
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(30);
         }
+        System.err.println("Results saved to file " + outFile.getName() + ".");
         try {
             writer = new FileWriter(outFile);
             for (JSONObject obj : list) {
@@ -131,6 +132,18 @@ public class DiscogsReader {
         }
     }
 
+    private static Object getObjectFromJSON(JSONObject object, String key){
+        Object content = null;
+        try{
+            content = object.get(key);
+        }catch(JSONException e){
+            e.printStackTrace();
+            System.exit(17);
+        }
+
+        return content;
+    }
+
 
     private static final String discogsUrl = "https://api.discogs.com/artists//";
 
@@ -142,39 +155,39 @@ public class DiscogsReader {
 
         String mainResponse = sendGet(url);
         JSONObject mainGroup = parseJSON(mainResponse);
-        String mainGroupName = ((JSONObject)mainGroup.get("data")).get("name").toString();
-        System.err.println("Członkowie " + mainGroupName + " to: ");
+        JSONObject mainGroupData = (JSONObject) getObjectFromJSON(mainGroup, "data");
+        String mainGroupName = getObjectFromJSON(mainGroupData, "name").toString();
+        System.err.println(mainGroupName + ":");
 
         List<Group> groupsList = new ArrayList<>();
         JSONArray mainMembers = getItemsFromData(mainGroup, "members");
         for(int i=0; i<mainMembers.length(); i++){ //wszyscy czlonkowie zespolu
            JSONObject member = (JSONObject) mainMembers.get(i);
-            System.err.println(member.get("name"));
-            String memberId = member.get("id").toString();
+            System.err.println("\t" + getObjectFromJSON(member, "name").toString());
+            String memberId = getObjectFromJSON(member, "id").toString();
             String memberResponse = sendGet(discogsUrl + memberId + callback);
             JSONObject memberJson = parseJSON(memberResponse);
             JSONArray groups = getItemsFromData(memberJson, "groups");  //grupy w ktorych gral konkretny czlonek
             for(int j=0; j<groups.length(); j++){
                 JSONObject group = (JSONObject) groups.get(j);
-                String groupName = group.get("name").toString();
+                String groupName = getObjectFromJSON(group, "name").toString();
                 boolean found = false;
 
                 for (Group value : groupsList) {
                     if (value.name.equals(groupName)) {
                         found = true;
-                        value.addMember(member.get("name").toString()); //jesli juz taki jest to add zostanie zignorowane
+                        value.addMember(getObjectFromJSON(member, "name").toString()); //jesli juz taki jest to add zostanie zignorowane
                         break;
                     }
                 }
 
-                if(!found && !group.get("name").toString().equals(mainGroupName)) { //jesli takiej grupy nie bylo na liscie to dodaj ja i dodaj membera do tego zoespolu
-                    groupsList.add(new Group(group.get("name").toString()));
-                    groupsList.get(groupsList.size()-1).addMember(member.get("name").toString());
+                if(!found && !getObjectFromJSON(group, "name").toString().equals(mainGroupName)) { //jesli takiej grupy nie bylo na liscie to dodaj ja i dodaj membera do tego zoespolu
+                    groupsList.add(new Group(getObjectFromJSON(group, "name").toString()));
+                    groupsList.get(groupsList.size()-1).addMember(getObjectFromJSON(member, "name").toString());
                 }
             }
         }
 
-        System.err.println("-------------------------------------------");
         ArrayList<JSONObject> groupsOut = new ArrayList<>();
         for(Group g : groupsList){
             if(g.getMembers().size()<2) {
@@ -190,7 +203,7 @@ public class DiscogsReader {
             System.out.println(groupOut);
             groupsOut.add(groupOut);
         }
-        saveListToFile("list.txt", groupsOut);
+        saveListToFile("list.json", groupsOut);
         System.exit(0);
     }
 }
