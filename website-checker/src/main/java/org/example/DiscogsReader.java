@@ -11,8 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
 
-//TODO: opakować metodą wyciaganie danych z JSONa
-//TODO: zrobic wyszukiwanie zespolu nazwa
+
 public class DiscogsReader {
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_2)
@@ -104,7 +103,7 @@ public class DiscogsReader {
         return items;
     }
 
-    private static void saveListToFile(String filename, List<JSONObject> list) {
+    private static void saveObjectToFile(String filename, Object object) {
         File outFile = null;
         FileWriter writer = null;
         try {
@@ -121,10 +120,7 @@ public class DiscogsReader {
         System.err.println("Results saved to file " + outFile.getName() + ".");
         try {
             writer = new FileWriter(outFile);
-            for (JSONObject obj : list) {
-                writer.write(obj.toString());
-                writer.write("\r\n");
-            }
+            writer.write(object.toString());
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -145,13 +141,57 @@ public class DiscogsReader {
     }
 
 
-    private static final String discogsUrl = "https://api.discogs.com/artists//";
+
+    public static boolean isInteger(String string) {
+        try {
+            Integer.valueOf(string);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static String getFirstIdFromSearch(String question, String token){
+        String searchUrl = "https://api.discogs.com/database/search?q=" + question + "&token=" + token;
+        String response = sendGet(searchUrl);
+        JSONObject json = parseJSON(response);
+        JSONArray results = null;
+
+        try{
+            results = json.getJSONArray("results");
+        }catch(JSONException e){
+            e.printStackTrace();
+            System.exit(11);
+        }
+
+        if(results == null){
+            System.exit(12);
+        }
+
+        return getObjectFromJSON( (JSONObject) results.get(0), "id").toString();
+
+    }
 
     public static void main(String[] args){
 
-        int id = 18839;
+        final String discogsUrl = "https://api.discogs.com/artists//";
+        String url;
         String callback = "?callback=callbackname";
-        String url = discogsUrl + id + callback;
+        String token = "olovhcugjeNlcSthaeDMWPuMFMLUoAmXJydyKgML";
+        String id;
+        
+        if(args.length<1){
+            System.err.println("No command-line arguments. First one must be name or group ID");
+            System.exit(40);
+        }
+
+        if(isInteger(args[0])){
+            id = args[0];
+        }else{
+            id = getFirstIdFromSearch(args[0], token);
+        }
+
+        url = discogsUrl + id + callback;
 
         String mainResponse = sendGet(url);
         JSONObject mainGroup = parseJSON(mainResponse);
@@ -188,7 +228,7 @@ public class DiscogsReader {
             }
         }
 
-        ArrayList<JSONObject> groupsOut = new ArrayList<>();
+        JSONArray cases = new JSONArray();
         for(Group g : groupsList){
             if(g.getMembers().size()<2) {
                 continue;
@@ -201,9 +241,9 @@ public class DiscogsReader {
             groupOut.put("members", membersOut);
             groupOut.put("name", g.getName());
             System.out.println(groupOut);
-            groupsOut.add(groupOut);
+            cases.put(groupOut);
         }
-        saveListToFile("list.json", groupsOut);
+        saveObjectToFile("list.json", cases);
         System.exit(0);
     }
 }
