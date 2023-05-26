@@ -187,8 +187,11 @@ public class DiscogsReader {
 
         if(isInteger(args[0])){
             id = args[0];
+            System.err.println("Searching by ID: " + args[0]);
         }else{
-            id = getFirstIdFromSearch(args[0], token);
+            String wholeArgs = String.join("-", args);
+            System.err.println("Searching by name: " + wholeArgs);
+            id = getFirstIdFromSearch(wholeArgs, token);
         }
 
         url = discogsUrl + id + callback;
