@@ -119,8 +119,9 @@ public class WebScrapper {
         String url, webType, webContent;
         url = "https://www.accuweather.com/pl/pl/" + cityData[1] + "/"
                 + cityData[2] + "/air-quality-index/" + cityData[2];
+
         webType = "text/html";
-        webContent = "AKTUALNA"; //powinno znajdować sie na stronie
+        webContent = "INDEKS"; //powinno znajdować sie na stronie
 
         System.err.print("Connecting to " + url + ": ");
         Connection connection = connectToWebsite(url, webType, webContent);

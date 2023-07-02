@@ -1,4 +1,14 @@
 package org.example;
+/*
+* Program, który w oparciu o informacje z Discogs sprawdza, czy członkowie (aktualni bądź byli) danego zespołu grali razem
+*  w jakichś innych zespołach. Wyświetla nazwy tych innych zespołów oraz nazwiska muzyków. Program przyjmuje jako argument
+*  numeryczny identyfikator zespołu (wtedy wyszukiwanie nastepuje od razu) lub nazwe zespolu (wtedy najpierw ta nazwa jest
+* wyszukiwana na stronie Discogs, pobierany jest pierwszy wynik z otrzymanych, oraz stamtad wyciagne
+* jest ID zespolu. W celu umozliwienia wyszukiwania zalozone zostalo konto na stronie Discogs, uzyskany w ten sposob token zapisany
+* jest w zmiennej w main(). Program zapisuje otrzymane wyniki do formatu JSON, oraz zapisuje w pliku output.json.
+* Program w trakcie dzialania wypisuje pomocnicze komunikaty na wyjscie System.err, na System.out wypisywane sa tylko koncowe
+* wyniki w formacie JSON.
+* */
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,6 +68,8 @@ public class DiscogsReader {
             System.exit(16);
         }
 
+        //sprawdzic czy poprawny json
+
         return resp;
     }
 
@@ -105,7 +117,7 @@ public class DiscogsReader {
 
     private static void saveObjectToFile(String filename, Object object) {
         File outFile = null;
-        FileWriter writer = null;
+        FileWriter writer;
         try {
             outFile = new File(filename);
             if (outFile.createNewFile()) {
@@ -246,7 +258,7 @@ public class DiscogsReader {
             System.out.println(groupOut);
             cases.put(groupOut);
         }
-        saveObjectToFile("list.json", cases);
+        saveObjectToFile("output.json", cases);
         System.exit(0);
     }
 }
