@@ -1,4 +1,4 @@
-package org.example;
+package web.scrappers;
 /*
 * Program, który w oparciu o informacje z Discogs sprawdza, czy członkowie (aktualni bądź byli) danego zespołu grali razem
 *  w jakichś innych zespołach. Wyświetla nazwy tych innych zespołów oraz nazwiska muzyków. Program przyjmuje jako argument

@@ -5,7 +5,7 @@
 * przykladowo dla miasta Warszawy: "Warszawa", "warsaw", "274663"
 * W przypadku braku argumentow program wyszuka informacje dla miasta Krakow.
 * */
-package org.example;
+package web.scrappers;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;

@@ -1,4 +1,4 @@
-package org.example;
+package web.scrappers;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;

@@ -1,4 +1,4 @@
-package org.example;
+package web.scrappers;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
